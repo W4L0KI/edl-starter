@@ -1,0 +1,39 @@
+name: Frontend Tests
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 👉 TODO 1 : Setup Node.js 18 avec cache npm
+      - name: 🧩 Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # 👉 TODO 2 : Installer les dépendances
+      - name: 📚 Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      # 👉 TODO 3 : Lancer les tests frontend
+      - name: 🧪 Run tests
+        run: |
+          cd frontend
+          npm test -- --run
+
+      # 👉 TODO 4 : Vérifier le build
+      - name: 🏗️ Build frontend
+        run: |
+          cd frontend
+          npm run build
