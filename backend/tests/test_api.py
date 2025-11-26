@@ -38,7 +38,8 @@ def test_health_check(client):
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
+    #assert response.json()["status"] == "healthy"
+    assert response.json()["status"] == "BROKEN"  # ❌ Faux exprès !
 
 
 def test_create_task(client):
@@ -130,7 +131,32 @@ def test_delete_task(client):
     Astuce : Regardez test_get_task_by_id pour voir comment créer et obtenir l'ID
     """
     # TODO : Écrivez votre test ici !
+       #Créer une tâche
+    create_response = client.post("/tasks", json={"title": "Tâche à supprimer"})
+    task_id = create_response.json()["id"]
+
+    #Supprimer la tâche
+    delete_response = client.delete(f"/tasks/{task_id}")
+
+    #Vérifier le code de statut
+    assert delete_response.status_code == 204
+
+    #Vérifier qu'elle n'existe plus
+    get_response = client.get(f"/tasks/{task_id}")
+    assert get_response.status_code == 404
     pass
+
+def test_delete_nonexistent_task_returns_404(client):
+    """Deleting a task that doesn't exist should return 404."""
+    #Essayer de supprimer une tâche avec un ID inexistant
+    response = client.delete("/tasks/9999")
+
+    #Vérifier le code de statut
+    assert response.status_code == 404
+
+    #Vérifier que le message d'erreur contient "not found"
+    error_detail = response.json()["detail"].lower()
+    assert "not found" in error_detail
 
 
 # EXERCICE 2 : Écrire un test pour METTRE À JOUR une tâche
@@ -149,6 +175,24 @@ def test_update_task(client):
     Astuce : Les requêtes PUT sont comme les POST, mais elles modifient des données existantes
     """
     # TODO : Écrivez votre test ici !
+        #Créer une tâche avec le titre "Titre Original"
+    create_response = client.post("/tasks", json={"title": "Titre Original"})
+    assert create_response.status_code == 201
+    task_id = create_response.json()["id"]
+
+    #Envoyer une requête PUT pour modifier le titre
+    update_response = client.put(f"/tasks/{task_id}", json={"title": "Nouveau Titre"})
+
+    #Vérifier que la mise à jour a réussi
+    assert update_response.status_code == 200
+
+    updated_task = update_response.json()
+
+    #Vérifier que le titre a bien été modifié
+    assert updated_task["title"] == "Nouveau Titre"
+
+    #Vérifier que le reste des champs (comme l’ID) n’a pas changé
+    assert updated_task["id"] == task_id
     pass
 
 
@@ -180,6 +224,19 @@ def test_update_task_with_invalid_priority(client):
     Rappel : Les priorités valides sont "low", "medium", "high" (voir TaskPriority dans app.py)
     """
     # TODO : Écrivez votre test ici !
+    #Créer une tâche valide
+    create_response = client.post("/tasks", json={"title": "Tâche prioritaire"})
+    task_id = create_response.json()["id"]
+
+    #Essayer de la mettre à jour avec une priorité invalide
+    update_response = client.put(f"/tasks/{task_id}", json={"priority": "urgent"})
+
+    #Vérifier que ça retourne une erreur de validation 422
+    assert update_response.status_code == 422
+
+    # (Optionnel) Vérifier que le message d’erreur mentionne la priorité
+    error_detail = update_response.json()["detail"]
+    assert any("priority" in str(err).lower() for err in error_detail)
     pass
 
 
@@ -194,6 +251,30 @@ def test_get_nonexistent_task(client):
     """
     # TODO : Écrivez votre test ici !
     pass
+
+
+def test_filter_by_multiple_criteria(client):
+    """Filtering by status AND priority should work."""
+    # TODO: Votre code ici
+    # 1. Créer 3 tâches avec différents status et priority
+    # 2. Filtrer avec GET /tasks?status=todo&priority=high
+    # 3. Vérifier qu'on reçoit seulement les bonnes tâches
+    #Créer 3 tâches avec différents statuts et priorités
+    client.post("/tasks", json={"title": "Tâche 1", "status": "todo", "priority": "high"})
+    client.post("/tasks", json={"title": "Tâche 2", "status": "done", "priority": "high"})
+    client.post("/tasks", json={"title": "Tâche 3", "status": "todo", "priority": "low"})
+
+    #Filtrer avec GET /tasks?status=todo&priority=high
+    response = client.get("/tasks?status=todo&priority=high")
+
+    #Vérifier la réponse
+    assert response.status_code == 200
+
+    tasks = response.json()
+    assert len(tasks) == 1  # une seule doit correspondre
+    assert tasks[0]["status"] == "todo"
+    assert tasks[0]["priority"] == "high"
+    assert tasks[0]["title"] == "Tâche 1"
 
 
 # =============================================================================
