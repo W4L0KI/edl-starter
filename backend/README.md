@@ -391,3 +391,4 @@ Educational material for workshops.
 ---
 
 **Version 2.2.0** - With PostgreSQL Integration 🚀
+Test E2E : vérifier que les tests E2E ne tournent pas sur PR.
